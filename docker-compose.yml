@@ -119,8 +119,8 @@ services:
     volumes:
       - /opt/qbittorrent/config:/config
       - /opt/qbittorrent/downloads:/downloads
-        #- /opt/jellyfin/tvseries:/jellyfin/tvseries
-        # - /opt/jellyfin/movies:/jellyfin/movies
+      - /opt/jellyfin/tvseries:/jellyfin/tvseries
+      - /opt/jellyfin/movies:/jellyfin/movies
     ports:
       - 6881:6881
       - 6881:6881/udp
