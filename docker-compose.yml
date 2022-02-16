@@ -19,15 +19,24 @@ services:
       - PGID=1000
       - TZ=Europe/Moscow
       - URL=starovoytovai.ru
-      - SUBDOMAINS=cloud,torrent,vw,hub,media,kavita,mail
+      - SUBDOMAINS=cloud,torrent,vw,hub,media,mail,notes
       - VALIDATION=http
       - CERTPROVIDER=zerossl
       - EMAIL=stewk6@gmail.com
     volumes:
       - /swag_data:/config
+      - /opt/jellyfin:/jellyfin
     ports:
       - 443:443
       - 80:80
+    restart: unless-stopped
+  authelia:
+    image: authelia/authelia
+    container_name: authelia
+    environment:
+      - TZ=Europe/Moscow
+    volumes:
+      - /var/authelia_data:/config
     restart: unless-stopped
   owncloud:
     image: owncloud/server:${OWNCLOUD_VERSION}
@@ -94,6 +103,8 @@ services:
     restart: always
     env_file:
       - vw.env
+    ports:
+      - 39299:80
     volumes:
       - /vw-data:/data
   heimdall:
@@ -108,48 +119,23 @@ services:
         #ports:
         # - 80:80
     restart: unless-stopped
-  qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent
-    container_name: qbittorrent
+  transmission:
+    image: lscr.io/linuxserver/transmission
+    container_name: transmission
     environment:
       - PUID=1000
       - PGID=1000
       - TZ=Europe/Moscow
-      - WEBUI_PORT=8080
+      - TRANSMISSION_WEB_HOME=/combustion-release/
+      - USER=
+      - PASS=
+      - WHITELIST=
+      - HOST_WHITELIST=
     volumes:
-      - /opt/qbittorrent/config:/config
-      - /opt/qbittorrent/downloads:/downloads
-      - /opt/jellyfin/tvseries:/jellyfin/tvseries
-      - /opt/jellyfin/movies:/jellyfin/movies
+      - /var/transmission/config:/config
+      - /torrent/downloads:/downloads
+      - /torrent/watch:/watch
     ports:
-      - 6881:6881
-      - 6881:6881/udp
-        #  - 8080:8080
+      - 51413:51413
+      - 51413:51413/udp
     restart: unless-stopped
-  jellyfin:
-    image: lscr.io/linuxserver/jellyfin
-    container_name: jellyfin
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/Moscow
-        #- JELLYFIN_PublishedServerUrl=192.168.0.5 #optional
-    volumes:
-      - /opt/jellyfin/library:/config
-      - /opt/jellyfin/tvseries:/data/tvshows
-      - /opt/jellyfin/movies:/data/movies
-        #  ports:
-            #- 8096:8096
-            # - 8920:8920 #optional
-            #- 7359:7359/udp #optional
-            #- 1900:1900/udp #optional
-    restart: unless-stopped
-  kavita:
-        image: kizaing/kavita:latest
-        container_name: kavita
-        volumes:
-            - /opt/kavita/manga:/manga
-            - /opt/kavita/config:/kavita/config
-              #ports:
-              # - "5000:5000"
-        restart: unless-stopped
