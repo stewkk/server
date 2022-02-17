@@ -19,7 +19,7 @@ services:
       - PGID=1000
       - TZ=Europe/Moscow
       - URL=starovoytovai.ru
-      - SUBDOMAINS=cloud,torrent,vw,hub,media,mail,notes
+      - SUBDOMAINS=cloud,torrent,vw,hub,media,mail,wiki
       - VALIDATION=http
       - CERTPROVIDER=zerossl
       - EMAIL=stewk6@gmail.com
@@ -138,4 +138,13 @@ services:
     ports:
       - 51413:51413
       - 51413:51413/udp
+    restart: unless-stopped
+  typemill:
+    build: ./typemill-docker/
+    container_name: typemill
+    environment:
+      - TYPEMILL_UID=1000
+      - TYPEMILL_GID=1000
+    volumes:
+      - /var/typemill/:/var/www/html/
     restart: unless-stopped
