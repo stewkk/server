@@ -19,13 +19,13 @@ services:
       - PGID=1000
       - TZ=Europe/Moscow
       - URL=starovoytovai.ru
-      - SUBDOMAINS=cloud,torrent,vw,hub,media,mail,wiki
+      - SUBDOMAINS=cloud,torrent,vw,hub,media,mail,wiki,manga
       - VALIDATION=http
       - CERTPROVIDER=zerossl
       - EMAIL=stewk6@gmail.com
     volumes:
       - /swag_data:/config
-      - /opt/jellyfin:/jellyfin
+      - /torrent/downloads/complete:/torrent/downloads/complete
     ports:
       - 443:443
       - 80:80
@@ -139,12 +139,14 @@ services:
       - 51413:51413
       - 51413:51413/udp
     restart: unless-stopped
-  typemill:
-    build: ./typemill-docker/
-    container_name: typemill
-    environment:
-      - TYPEMILL_UID=1000
-      - TYPEMILL_GID=1000
+  komga:
+    image: gotson/komga:0.x
+    container_name: komga
     volumes:
-      - /var/typemill/:/var/www/html/
+      - /var/komga/config:/config
+      - /var/komga/data:/data
+      - /etc/timezone:/etc/timezone
+    user: "1000:1000"
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xmx2g
     restart: unless-stopped
