@@ -1,13 +1,5 @@
 version: '3'
 
-volumes:
-  files:
-    driver: local
-  mysql:
-    driver: local
-  redis:
-    driver: local
-
 services:
   swag:
     image: ghcr.io/linuxserver/swag
@@ -19,12 +11,13 @@ services:
       - PGID=1000
       - TZ=Europe/Moscow
       - URL=starovoytovai.ru
-      - SUBDOMAINS=cloud,torrent,vw,hub,media,mail,wiki,manga
+      - SUBDOMAINS=cloud,torrent,vw,media,wiki,manga,todo,git,music
+        # - EXTRA_DOMAINS=cloud.starovoytovai.ru,torrent.starovoytovai.ru,vw.starovoytovai.ru,media.starovoytovai.ru,wiki.starovoytovai.ru,manga.starovoytovai.ru,todo.starovoytovai.ru,git.starovoytovai.ru
+      - ONLY_SUBDOMAINS=true
       - VALIDATION=http
-      - CERTPROVIDER=zerossl
       - EMAIL=stewk6@gmail.com
     volumes:
-      - /swag_data:/config
+      - /var/swag/:/config
       - /torrent/downloads/complete:/torrent/downloads/complete
     ports:
       - 443:443
@@ -65,7 +58,7 @@ services:
       timeout: 10s
       retries: 5
     volumes:
-      - files:/mnt/data
+      - /var/owncloud/files:/mnt/data
 
   mariadb:
     image: mariadb:10.5
@@ -83,7 +76,7 @@ services:
       timeout: 5s
       retries: 5
     volumes:
-      - mysql:/var/lib/mysql
+      - /var/owncloud/mysql:/var/lib/mysql
 
   redis:
     image: redis:6
@@ -96,29 +89,15 @@ services:
       timeout: 5s
       retries: 5
     volumes:
-      - redis:/data
+      - /var/owncloud/redis:/data
   vaultwarden:
     image: vaultwarden/server:${VAULTWARDEN_VERSION}
     container_name: vaultwarden
     restart: always
     env_file:
       - vw.env
-    ports:
-      - 39299:80
     volumes:
-      - /vw-data:/data
-  heimdall:
-    image: lscr.io/linuxserver/heimdall
-    container_name: heimdall
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/Moscow
-    volumes:
-      - /opt/heimdall_data:/config
-        #ports:
-        # - 80:80
-    restart: unless-stopped
+      - /var/vaultwarden:/data
   transmission:
     image: lscr.io/linuxserver/transmission
     container_name: transmission
@@ -150,3 +129,71 @@ services:
     environment:
       - JAVA_TOOL_OPTIONS=-Xmx2g
     restart: unless-stopped
+  vikunja_db:
+    image: mariadb:10
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    container_name: vikunja_db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${VIKUNJA_MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${VIKUNJA_MYSQL_USER}
+      MYSQL_PASSWORD: ${VIKUNJA_MYSQL_PASSWORD}
+      MYSQL_DATABASE: vikunja
+    volumes:
+      - /var/vikunja/db:/var/lib/mysql
+    restart: unless-stopped
+  vikunja_api:
+    image: vikunja/api
+    container_name: vikunja_api
+    environment:
+      VIKUNJA_DATABASE_HOST: vikunja_db
+      VIKUNJA_DATABASE_PASSWORD: ${VIKUNJA_MYSQL_PASSWORD}
+      VIKUNJA_DATABASE_TYPE: mysql
+      VIKUNJA_DATABASE_USER: ${VIKUNJA_MYSQL_USER}
+      VIKUNJA_DATABASE_DATABASE: vikunja
+    # ports:
+    #   - 3456:3456
+    volumes:
+      - /var/vikunja/files:/app/vikunja/files
+    depends_on:
+      - vikunja_db
+    restart: unless-stopped
+  vikunja_frontend:
+    image: vikunja/frontend
+    container_name: vikunja_frontend
+    # ports:
+    #   - 80:80
+    # environment:
+    #   VIKUNJA_API_URL: http://<your-ip-here>:3456/api/v1
+    restart: unless-stopped
+  gitea:
+    image: gitea/gitea
+    container_name: gitea
+    environment:
+      - USER_UID=1001
+      - USER_GID=1001
+      - GITEA__database__DB_TYPE=mysql
+      - GITEA__database__HOST=gitea_db:3306
+      - GITEA__database__NAME=gitea
+      - GITEA__database__USER=gitea
+      - GITEA__database__PASSWD=${GITEA_DB_PASSWORD}
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:2222:22
+    volumes:
+      - /var/gitea:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /home/git/.ssh/:/data/git/.ssh
+    depends_on:
+      - gitea_db
+  gitea_db:
+    image: mysql:8
+    restart: unless-stopped
+    container_name: gitea_db
+    environment:
+      - MYSQL_ROOT_PASSWORD=${GITEA_DB_ROOT_PASSWORD}
+      - MYSQL_USER=gitea
+      - MYSQL_PASSWORD=${GITEA_DB_PASSWORD}
+      - MYSQL_DATABASE=gitea
+    volumes:
+      - /var/gitea_db/mysql:/var/lib/mysql
