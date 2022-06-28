@@ -11,7 +11,7 @@ services:
       - PGID=1000
       - TZ=Europe/Moscow
       - URL=starovoytovai.ru
-      - SUBDOMAINS=cloud,torrent,vw,media,wiki,manga,todo,git,music
+      - SUBDOMAINS=cloud,torrent,vw,media,wiki,manga,todo,git,music,jellyfin,stash
         # - EXTRA_DOMAINS=cloud.starovoytovai.ru,torrent.starovoytovai.ru,vw.starovoytovai.ru,media.starovoytovai.ru,wiki.starovoytovai.ru,manga.starovoytovai.ru,todo.starovoytovai.ru,git.starovoytovai.ru
       - ONLY_SUBDOMAINS=true
       - VALIDATION=http
@@ -130,7 +130,7 @@ services:
       - JAVA_TOOL_OPTIONS=-Xmx2g
     restart: unless-stopped
   vikunja_db:
-    image: mariadb:10
+    image: mariadb:10.7.3
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     container_name: vikunja_db
     environment:
@@ -197,3 +197,54 @@ services:
       - MYSQL_DATABASE=gitea
     volumes:
       - /var/gitea_db/mysql:/var/lib/mysql
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin
+    container_name: jellyfin
+    runtime: nvidia
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Moscow
+      - NVIDIA_VISIBLE_DEVICES=all
+        #- JELLYFIN_PublishedServerUrl=192.168.0.5 #optional
+    volumes:
+      - /opt/jellyfin:/config
+      - /torrent/downloads/complete/anime:/data/anime
+        #  ports:
+            #- 8096:8096
+            # - 8920:8920 #optional
+            #- 7359:7359/udp #optional
+            #- 1900:1900/udp #optional 
+  stash:
+    image: stashapp/stash:latest
+    container_name: stash
+    restart: unless-stopped
+    runtime: nvidia
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "10"
+        max-size: "2m"
+    environment:
+      - STASH_STASH=/data/
+      - STASH_GENERATED=/generated/
+      - STASH_METADATA=/metadata/
+      - STASH_CACHE=/cache/
+      - STASH_PORT=9999
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      ## Adjust below paths (the left part) to your liking.
+      ## E.g. you can change ./config:/root/.stash to ./stash:/root/.stash
+      
+      ## Keep configs, scrapers, and plugins here.
+      - /var/stash/config:/root/.stash
+      ## Point this at your collection.
+      - /torrent/downloads/complete/p:/data
+      ## This is where your stash's metadata lives
+      - /var/stash/metadata:/metadata
+      ## Any other cache content.
+      - /var/stash/cache:/cache
+      ## Where to store generated content (screenshots,previews,transcodes,sprites)
+      - /var/stash/generated:/generated
+
